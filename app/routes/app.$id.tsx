@@ -19,7 +19,7 @@ import Select from "@/components/ui/select";
 import { BACKEND_URL } from "@/config/app.config";
 import { useEffect } from "react";
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
+export const loader = async ({ request, params }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
   // Get List products from Shopify
   const response = await admin.graphql(
@@ -42,7 +42,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const temRes = await fetch(`${BACKEND_URL}/template?page=${1}&pageSize=100`);
   const template = (await temRes.json()) as { data: any[]; total: number };
 
+  let configData = null as any;
+  if (params.id !== "add") {
+    const configRes = await fetch(
+      `${BACKEND_URL}/config-products/${params.id}`,
+    );
+    configData = await configRes.json();
+  }
+
   return {
+    configData,
     products: data.data?.products?.edges?.map((n: any) => n.node),
     template: template,
   };
@@ -52,88 +61,96 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action: ActionFunction = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
   const formData = await request.formData();
-  const { products } = Object.fromEntries(formData);
+  const { name, templateId, products } = Object.fromEntries(formData);
   const data = JSON.parse(products as string);
 
   try {
-    // Add product to database
-    const response = await fetch("http://localhost:8080/product", {
+    // Add config to database
+    const response = await fetch("http://localhost:8080/config-products", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ name, templateId, products: data }),
     });
 
-    const p = await response.json();
+    const configData = await response.json();
 
     // Update metafield of product
     // Docs: https://shopify.dev/docs/apps/build/custom-data/metafields/manage-metafields
     // 1. Create or Update meta field
-    const metaRes = await admin.graphql(`#graphql
-    mutation {
-          productUpdate(
-          input : {
-            id: "${data[0].shopifyId}",
-            metafields: [
-              {
-                namespace: "pod",
-                key: "personalize",
-                value: "${data[0].templateId}",
-                type: "single_line_text_field",
-              }
-            ]
-          }) {
-            product {
-              metafields(first: 100) {
-                edges {
-                  node {
-                    id
-                    namespace
-                    key
-                    value
+    const metaRes = await Promise.all(
+      data.map((p: ProductAddType) =>
+        admin.graphql(`#graphql
+      mutation {
+            productUpdate(
+            input : {
+              id: "${p.shopifyId}",
+              metafields: [
+                {
+                  namespace: "pod",
+                  key: "personalize",
+                  value: "${templateId}",
+                  type: "single_line_text_field",
+                }
+              ]
+            }) {
+              product {
+                metafields(first: 10) {
+                  edges {
+                    node {
+                      value
+                    }
                   }
                 }
               }
             }
           }
-        }
-      `);
+        `),
+      ),
+    );
 
-    const metaData = await metaRes.json();
     return {
-      p,
+      configData,
     };
   } catch (error) {
     return { error };
   }
 };
 
+type ProductAddType = {
+  id?: string;
+  configId?: string;
+  shopifyId: string;
+  shopifyUrl: string;
+  templateId?: string;
+};
+
 export default function Index() {
-  const { products, template } = useLoaderData<typeof loader>();
+  const { configData, products, template } = useLoaderData<typeof loader>();
   const fetcher = useFetcher();
 
   const form = useForm({
     defaultValues: {
-      products: [] as any,
-      name: "hehe",
-      shopifyId: "he",
-      templateId: "",
+      name: configData?.name || '',
+      products: configData?.products?.map((p: any) => p.shopifyUrl) || [],
+      templateId: configData?.templateId || "",
     },
   });
   const shopify = useAppBridge();
 
   function handleSubmit(data: any) {
-    const productsData = data.products.map((id: string) => {
-      const foundProduct = products.find((p: any) => p.id === id);
+    const productsData: ProductAddType[] = data.products.map((handle: string) => {
+      const foundProduct = products.find((p: any) => p.handle === handle);
 
       return {
-        name: foundProduct?.title,
-        shopifyId: id,
+        shopifyId: handle,
         templateId: data.templateId,
         shopifyUrl: foundProduct?.handle,
-      };
+      } as ProductAddType;
     });
 
     const formData = new FormData();
+    formData.append("name", data.name);
+    formData.append("templateId", data.templateId);
     formData.append("products", JSON.stringify(productsData));
 
     fetcher.submit(formData, {
@@ -164,7 +181,11 @@ export default function Index() {
               <FormItem>
                 <FormLabel>Configured product name</FormLabel>
                 <FormControl>
-                  <Input placeholder="Configured product name" {...field} />
+                  <Input
+                    placeholder="Configured product name"
+                    {...field}
+                    required
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -188,7 +209,7 @@ export default function Index() {
                         <FormControl>
                           <MultiSelect
                             options={products?.map((p: any) => ({
-                              value: p.id,
+                              value: p.handle,
                               label: p.title,
                             }))}
                             onValueChange={field.onChange}

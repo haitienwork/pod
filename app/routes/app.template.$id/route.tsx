@@ -17,7 +17,6 @@ import Select from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "lucide-react";
 import { TemplateGenerator } from "@/lib/template-generator";
-import { Field } from "@prisma/client";
 import { BACKEND_URL } from "@/config/app.config";
 import { useEffect } from "react";
 
@@ -72,7 +71,7 @@ export const action: ActionFunction = async ({ request }) => {
 
 interface FormValues {
   name: string;
-  fields: Partial<Field>[];
+  fields: any;
 }
 
 export default function TemplateAddPage() {

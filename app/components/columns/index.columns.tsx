@@ -5,9 +5,11 @@ import { EditIcon, TrashIcon } from "../ui/icons";
 
 export const getColumns = ({
   template,
+  medias,
   handleEditConfigProduct,
 }: {
   template: any[];
+  medias: any[];
   handleEditConfigProduct: (id: string) => void;
 }): ColumnDef<any>[] => {
   return [
@@ -40,7 +42,7 @@ export const getColumns = ({
               // onClick={handleClickStopPropagation}
             />
             <img
-              src={row?.original?.img}
+              src={medias[0]?.url}
               alt={row?.original?.name}
               className="aspect-[9/16] w-6 rounded-lg"
             />
@@ -50,14 +52,19 @@ export const getColumns = ({
       },
     },
     {
-      accessorKey: "totalInventory",
       header: "Product Quantity",
-      size: 100,
+      size: 50,
+      meta: {
+        textAlign: "justify-center",
+      },
+      cell: ({ row }) => (
+        <p className="text-center">{row.original.products?.length}</p>
+      ),
     },
     {
       accessorKey: "template",
       header: "Template",
-      size: 220,
+      size: 100,
       meta: {
         textAlign: "justify-center",
       },
@@ -66,9 +73,9 @@ export const getColumns = ({
           (t) => t.id === row.original.templateId,
         );
         return (
-          <span className="text-sm text-center px-1.5 py-1 inline-block bg-muted rounded-md">
-            {templateFound?.name}
-          </span>
+          <div className="text-sm">
+            <p className="px-1.5 py-1 block w-fit mx-auto bg-muted rounded-md">{templateFound?.name}</p>
+          </div>
         );
       },
     },

@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "f41dd3deba3be494ebc929848f5ad586"
-application_url = "https://68e0-2a09-bac1-7ae0-68-00-245-11b.ngrok-free.app"
+application_url = "https://2dc1-2a09-bac5-d430-2646-00-3d0-2c.ngrok-free.app"
 embedded = true
 name = "pod"
 handle = "pod-25"
@@ -27,9 +27,9 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://68e0-2a09-bac1-7ae0-68-00-245-11b.ngrok-free.app/auth/callback",
-  "https://68e0-2a09-bac1-7ae0-68-00-245-11b.ngrok-free.app/auth/shopify/callback",
-  "https://68e0-2a09-bac1-7ae0-68-00-245-11b.ngrok-free.app/api/auth/callback"
+  "https://2dc1-2a09-bac5-d430-2646-00-3d0-2c.ngrok-free.app/auth/callback",
+  "https://2dc1-2a09-bac5-d430-2646-00-3d0-2c.ngrok-free.app/auth/shopify/callback",
+  "https://2dc1-2a09-bac5-d430-2646-00-3d0-2c.ngrok-free.app/api/auth/callback"
 ]
 
 [pos]

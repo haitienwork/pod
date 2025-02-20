@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import {
   useLoaderData,
@@ -18,7 +18,6 @@ import Select from "@/components/ui/select";
 import { DataTable } from "@/components/ui/data-table";
 import { getColumns } from "@/components/columns/index.columns";
 import { BACKEND_URL } from "@/config/app.config";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
@@ -28,9 +27,19 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   // Get list products configured
   const productRes = await fetch(
-    `${BACKEND_URL}/product?page=${page}&pageSize=${pageSize}`,
+    `${BACKEND_URL}/config-products?page=${page}&pageSize=${pageSize}`,
   );
-  const product = (await productRes.json()) as { data: any[]; total: number };
+  const configProducts = (await productRes.json()) as {
+    data: any[];
+    total: number;
+  };
+
+  const uniqueProductHandle = new Set();
+  configProducts.data.forEach((c) => {
+    c.products.forEach((p: any) => {
+      uniqueProductHandle.add(p.shopifyUrl);
+    });
+  });
 
   // Get all templates for dropdown
   const temRes = await fetch(`${BACKEND_URL}/template?page=${1}&pageSize=100`);
@@ -40,7 +49,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const response = await admin.graphql(
     `#graphql
     query {
-      products(first: 100, query: "handle:${product.data.map((p) => p.shopifyUrl)}") {
+      products(first: 100, query: "handle:${Array.from(uniqueProductHandle)}") {
         edges {
           node {
             handle
@@ -68,24 +77,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       url: m.media.nodes[0].preview.image.url,
     })) as any[];
 
-  const combinedProduct = product.data.map((p: any) => ({
-    ...p,
-    img: medias.find((m) => m.handle === p.shopifyUrl)?.url,
-  }));
-
   return {
-    product: {
-      data: combinedProduct,
-      total: product.total,
-    },
+    configProducts,
     template,
+    medias
   };
 };
 
 export default function Index() {
-  const { product, template } = useLoaderData<typeof loader>();
+  const { configProducts, template, medias } = useLoaderData<typeof loader>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [productId, setProductId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { state } = useLocation();
 
@@ -111,7 +112,7 @@ export default function Index() {
   }
 
   function handleEditConfigProduct(id: string) {
-    navigate("/app/id", {
+    navigate(`/app/${id}`, {
       state: {
         activeTab: "configured-products",
         pagination: {
@@ -123,7 +124,7 @@ export default function Index() {
   }
 
   const columns = useMemo(
-    () => getColumns({ template: template.data, handleEditConfigProduct }),
+    () => getColumns({ template: template.data, handleEditConfigProduct, medias }),
     [searchParams],
   );
 
@@ -173,7 +174,7 @@ export default function Index() {
       </div>
       <DataTable
         columns={columns}
-        data={product.data ?? []}
+        data={configProducts.data ?? []}
         showPagination={false}
       />
     </Page>
