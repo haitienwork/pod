@@ -1,0 +1,21 @@
+{% assign product = block.settings.product %}
+{% assign template_id = product.metafields.pod.personalize %}
+
+<product-personalization
+  template-id="{{ template_id }}"
+  product-tags="{{ product.tags | join: ',' }}"
+>
+  POD Personalization
+</product-personalization>
+
+{% if template_id != null and template_id != '' %}
+  <script src="{{ 'test.js' | asset_url  }}" defer></script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Star Rating",
+  "target": "section",
+  "settings": [{ "type": "product", "id": "product", "label": "product", "autofill": true }]
+}
+{% endschema %}
