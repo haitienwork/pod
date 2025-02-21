@@ -16,12 +16,14 @@ async function addPersonalizeInput() {
     const data = await res.json();
     const cloneElement = rootEle.cloneNode();
 
-    cloneElement.innerHTML = data.html
-      .replaceAll("{sectionId}", sectionId)
-      .replaceAll("{formId}", formId);
+    if (data?.html) {
+      cloneElement.innerHTML = data.html
+        .replaceAll("{sectionId}", sectionId)
+        .replaceAll("{formId}", formId);
 
-    rootEle.remove()
-    addToCartRoot.before(cloneElement);
+      rootEle.remove();
+      addToCartRoot.before(cloneElement);
+    }
   } catch (error) {
     const pathname = window.location.href;
     if (!pathname.includes("admin.shopify.com")) {

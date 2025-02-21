@@ -58,16 +58,17 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
 };
 
 // Action
-export const action: ActionFunction = async ({ request }) => {
+export const action: ActionFunction = async ({ request, params }) => {
   const { admin } = await authenticate.admin(request);
   const formData = await request.formData();
   const { name, templateId, products } = Object.fromEntries(formData);
+  const id = params.id
   const data = JSON.parse(products as string);
 
   try {
     // Add config to database
-    const response = await fetch("http://localhost:8080/config-products", {
-      method: "POST",
+    const response = await fetch(`http://localhost:8080/config-products${id === 'add' ? '' : `/${id}`}`, {
+      method: id === 'add' ? 'POST' : 'PUT' ,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, templateId, products: data }),
     });
@@ -79,7 +80,7 @@ export const action: ActionFunction = async ({ request }) => {
     // 1. Create or Update meta field
     const metaRes = await Promise.all(
       data.map((p: ProductAddType) =>
-        admin.graphql(`#graphql
+        admin.graphql(`
       mutation {
             productUpdate(
             input : {
@@ -130,7 +131,7 @@ export default function Index() {
 
   const form = useForm({
     defaultValues: {
-      name: configData?.name || '',
+      name: configData?.name || "",
       products: configData?.products?.map((p: any) => p.shopifyUrl) || [],
       templateId: configData?.templateId || "",
     },
@@ -138,15 +139,17 @@ export default function Index() {
   const shopify = useAppBridge();
 
   function handleSubmit(data: any) {
-    const productsData: ProductAddType[] = data.products.map((handle: string) => {
-      const foundProduct = products.find((p: any) => p.handle === handle);
+    const productsData: ProductAddType[] = data.products.map(
+      (handle: string) => {
+        const foundProduct = products.find((p: any) => p.handle === handle);
 
-      return {
-        shopifyId: handle,
-        templateId: data.templateId,
-        shopifyUrl: foundProduct?.handle,
-      } as ProductAddType;
-    });
+        return {
+          shopifyId: foundProduct?.id,
+          shopifyUrl: foundProduct?.handle,
+          templateId: data.templateId,
+        } as ProductAddType;
+      },
+    );
 
     const formData = new FormData();
     formData.append("name", data.name);
